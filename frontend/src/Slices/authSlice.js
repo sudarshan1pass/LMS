@@ -1,8 +1,10 @@
 import { createSlice } from "@reduxjs/toolkit";
+// import { forgetPassword } from "../../../Server/Controller/Forgetpassword";
 
 const initialState = {
   signupData: null,
   loading: false,
+  email:null,
 
   token: localStorage.getItem("token")
     ? JSON.parse(localStorage.getItem("token"))
@@ -10,6 +12,9 @@ const initialState = {
 
   user: localStorage.getItem("user")
     ? JSON.parse(localStorage.getItem("user"))
+    : null,
+  email:localStorage.getItem("email") 
+    ? JSON.parse(localStorage.getItem("email"))
     : null,
 };
 
@@ -25,6 +30,10 @@ const authSlice = createSlice({
 
     setLoading(state, action) {
       state.loading = action.payload;
+    },
+
+    setemail(state,action){
+      state.email=action.payload;
     },
 
     setToken(state, action) {
@@ -53,6 +62,16 @@ const authSlice = createSlice({
       localStorage.removeItem("token");
       localStorage.removeItem("user");
     },
+      updateEmployee: (state, action) => {
+      const updatedEmp = action.payload;
+
+      state.storedata = state.storedata.map((emp) =>
+        emp._id === updatedEmp._id ? updatedEmp : emp
+      );
+
+      localStorage.setItem("storedata", JSON.stringify(state.storedata));
+    },
+   
   },
 });
 
@@ -60,8 +79,8 @@ export const {
   setSignupData,
   setLoading,
   setToken,
-  setUser,
-  logout,
+  setUser,setemail,
+  logout,updateEmployee
 } = authSlice.actions;
 
 export default authSlice.reducer;

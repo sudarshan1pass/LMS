@@ -10,6 +10,7 @@ const {
   changePassword,
 } = require("../Controller/Auth") 
 
+const { forgetPasswordToken, forgetPassword,sendResetOtp } = require("../Controller/Forgetpassword")
 
 const { isInstructor, isAdmin, isStudent, auth } = require("../Middleware/auth.js") 
 
@@ -35,11 +36,13 @@ router.post("/sendOTP",sendOTP)
 router.post("/changePassword",auth,changePassword)
 
 
-// router.post("/forget-password-token", forgetPasswordToken)
+router.post("/forget-password-token", forgetPasswordToken)
 
-// router.post("/forget-password", forgetPassword)
+router.post("/forget-password", forgetPassword)
 
- router.get("/Student",auth,isStudent,(req,res)=>{
+router.post("/send-reset-otp", sendResetOtp)
+
+router.get("/Student",auth,isStudent,(req,res)=>{
      return res. status(200).json({
        success:true,
        message:"Welcome to the Student Account",

@@ -13,6 +13,10 @@ const fileUpload = require("express-fileupload");
 
 dotenv.config();
 const PORT = process.env.PORT || 4000;
+const allowedOrigins = [
+	process.env.FRONTEND_URL,
+	"http://localhost:5173",
+].filter(Boolean);
 
 //database connect
 database.connect();
@@ -24,7 +28,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
 	cors({
-		origin:"http://localhost:5173",
+		origin: allowedOrigins,
 		credentials:true,
 	})
 )

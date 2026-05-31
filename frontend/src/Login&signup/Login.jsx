@@ -265,9 +265,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() =>
-                    toast.error(
-                      "Forgot password functionality is not implemented yet."
-                    )
+                    navigate("/Forgotpassword/token")
                   }
                   className="cursor-pointer text-xs text-cyan-300 hover:text-cyan-200"
                 >

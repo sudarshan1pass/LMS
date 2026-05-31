@@ -1,61 +1,61 @@
-const User=require("../Models/User");
+const User = require("../Models/User");
 // const cryptoRandomString=require("crypto-random-string")
-const crypto=require("crypto")
-const bcrypt=require("bcrypt")
-const {mailSender}=require("../Utils/mailSender")
+const crypto = require("crypto")
+const bcrypt = require("bcrypt")
+const { mailSender } = require("../Utils/mailSender")
+const OTP = require("../Models/OTP")
 
-exports.forgetPasswordToken=async(req,res)=>{
-    try{
-        const {email}=req.body;
+exports.forgetPasswordToken = async (req, res) => {
+    try {
+        const { email } = req.body;
 
         // validation
-        if(!email) {
+        if (!email) {
             return res.status(400).json({
-                message:"Email is required"
+                message: "Email is required"
             });
-            }
+        }
 
-            // user exists
-            const user=await User.findOne({email:email});
-            if(!user) {
-                return res.status(404).json({
-                    message:"User not found"
-                    });
-                }
+        // user exists
+        const user = await User.findOne({ email: email });
+        if (!user) {
+            return res.status(404).json({
+                message: "User not found"
+            });
+        }
 
-            // generate random string 
-            const token=crypto.randomUUID();
+        // generate random string 
+        const token = crypto.randomUUID();
 
-            // add token in user data
-                const updatedData= await User.findOneAndUpdate({email},{
-                    token:token,
-                    tokenExpriresIn:Date.now()+5*60*1000
-                },{new:true})
+        // add token in user data
+        const updatedData = await User.findOneAndUpdate({ email }, {
+            token: token,
+            tokenExpriresIn: Date.now() + 5 * 60 * 1000
+        }, { new: true })
 
         const url = `http://localhost:5173/update-password/${token}`
-                
+
         //  send mail
 
-        await mailSender(email,
-            "reset-password-link",
-            `to reset password click on below url ${url}`)
+        await mailSender(
+            email,
+            "Reset Password Link",
+            `Click here to reset password: ${url}`
+        )
 
-// send response
-return res.status(200).json({
-    success:true,
-    message:"Password reset link sent to your email"
+        // send response
+        return res.status(200).json({
+            success: true,
+            message: "Reset password link sent successfully"
 
-})
-
-            
-
+        })
 
     }
-    catch(error){
+    catch (error) {
 
         return res.status(500).json({
-            success:false,
-            message:"Internal server error error occured while sending mail for forgot password"
+            success: false,
+            message: "Internal server error error occured while sending mail for forgot password"
         })
 
     }
@@ -63,51 +63,150 @@ return res.status(200).json({
 
 // create new password
 
-exports.forgetPassword=async()=>
-{
-    try{
-        const {password,confirmpassword,token}=req.body;
+exports.forgetPassword = async (req, res) => {
+  try {
 
-        // H/W do validation 
-        // match password
-        if(password!==confirmpassword){
-            return res.status(400).json({
-                success:false,
-                message:"Password and confirm password does not match"
-                })
-                }
+    const {
+      email,
+      otp,
+      password,
+      confirmPassword,
+    } = req.body;
 
-                 // check token is exprire or not 
-                 const userdata=await User.find({token:token})
-                 if(userdata.tokenExpriresIn < Date.now()){
-                     return res.status(400).json({
-                         success:false,
-                         message:"token is expire"
-                     })
-                 }
-            
-                // hashed password
-                const hashedPassword=await bcrypt.hash(password,10);
-
-
-                // updated password in db
-                const updatedPassword=await User.findOneAndUpdate({token:token},{password:hashedPassword})
-
-                return res.status(200).json({
-                    success:true,
-                    message:"Password updated successfully"
-                })
-
-
-
-
+    // validation
+    if (
+      !email ||
+      !otp ||
+      !password ||
+      !confirmPassword
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
     }
-    catch(error){
-        console.log(error);
-        return res.status(500).json({
-            success:false,
-            message:"error occured in updating password"+error.message
+
+    // password match
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Password and confirm password do not match",
+      });
+    }
+
+    // verify otp
+    const otpData = await OTP.findOne({
+      email,
+      otp: otp.toString(),
+    }).sort({ createdAt: -1 });
+
+    console.log("OTP DATA =>", otpData);
+
+    if (!otpData) {
+      return res.status(404).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    // find user
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // hash password
+    const hashedPassword = await bcrypt.hash(
+      password,
+      10
+    );
+
+    // update password
+    user.password = hashedPassword;
+
+    await user.save();
+
+    // delete used otp
+    await OTP.deleteMany({ email });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.sendResetOtp = async (req, res) => {
+
+    try {
+
+        const { email } = req.body;
+
+        // validation
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required"
+            })
+        }
+
+        // check user
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            })
+        }
+
+        // generate otp
+        const otp = Math.floor(
+            100000 + Math.random() * 900000
+        ).toString();
+
+        // save otp
+        user.resetOtp = otp;
+
+        user.resetOtpExpire = Date.now() + 5 * 60 * 1000;
+
+        await user.save();
+        console.log("SAVED USER =>", user);
+
+        // send mail
+        await mailSender(
+            email,
+            "Password Reset OTP",
+            `Your OTP is ${otp}`
+        )
+
+        return res.status(200).json({
+            success: true,
+            message: "OTP sent successfully"
         })
 
+    }
+    catch (error) {
+
+        console.log(error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        })
     }
 }

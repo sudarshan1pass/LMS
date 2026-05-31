@@ -223,7 +223,8 @@ const Navbar = () => {
 
                 <button
                   onClick={handleLogout}
-                  className="cursor-pointer rounded-full bg-red-500 px-6 py-2 font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-red-600"
+                  className="cursor-pointer rounded-full bg-red-400 px-10 py-2.5 font-semibold text-black transition-all duration-300 hover:scale-105 hover:bg-red-300 hover:shadow-lg hover:shadow-red-400/40 active:scale-95"
+                
                 >
                   Logout
                 </button>
@@ -295,7 +296,8 @@ const Navbar = () => {
 
                   <button
                     onClick={handleLogout}
-                    className="rounded-full bg-red-500 px-6 py-2 font-semibold text-white transition-all duration-300 hover:bg-red-600"
+                     className="cursor-pointer rounded-full bg-red-400 px-8 py-2.5 font-semibold text-black transition-all duration-300 hover:scale-105 hover:bg-red-300 hover:shadow-lg hover:shadow-cyan-400/40 active:scale-95"
+                   
                   >
                     Logout
                   </button>
