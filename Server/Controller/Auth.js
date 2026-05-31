@@ -4,6 +4,8 @@ const Profile = require("../Models/Profile");
 const otpGenerator = require("otp-generator");
 const bcrypt=require("bcrypt")
 const jwt=require("jsonwebtoken")
+const { mailSender } = require("../Utils/mailSender")
+const emailTemplate = require("../mail/emailVerificationTemplate")
 
 // signup
 
@@ -117,6 +119,14 @@ exports.sendOTP=async(req,res)=>{
                 })
                 }
 
+                const userExist = await User.findOne({ email });
+                if (userExist) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Email already exists",
+                    })
+                }
+
                 // generate otp
                 const result=otpGenerator.generate(6,{
                     upperCaseAlphabets: false,
@@ -124,23 +134,29 @@ exports.sendOTP=async(req,res)=>{
                      lowerCaseAlphabets:false
                 })
                 // save otp in db
-             const otpdoc=  new OTP({
+             const otpdoc= await new OTP({
                 email,
                 otp:result
 
                }).save()
 
+             await mailSender(
+                email,
+                "Verification Email",
+                emailTemplate(result)
+             )
+
              return  res.status(201).json({
                 success:true,
-                message:"OTP sent successfully",
-                otp:result
+                message:"OTP sent successfully"
                })
 
     }
     catch(error){
+        console.error("Signup OTP email failed:", error.message)
        return res.status(500).json({
             success:false,
-            message:"error occcured while creating otp ",
+            message:"Unable to send OTP email",
             error:error.message
             })
 
