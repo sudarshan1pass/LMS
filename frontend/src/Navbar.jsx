@@ -12,7 +12,7 @@ import {
   useSelector,
 } from "react-redux";
 
-import { logout } from "./slices/authSlice";
+import { logout } from "./Slices/authSlice";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);

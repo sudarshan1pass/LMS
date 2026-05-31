@@ -7,7 +7,7 @@ import { useDispatch } from "react-redux";
 import { apiConnector } from "../services/apiConnector";
 import { endpoints } from "../services/apis";
 
-import { setToken, setUser } from "../slices/authSlice";
+import { setToken, setUser } from "../Slices/authSlice";
 
 const FieldIcon = ({ children }) => (
   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">

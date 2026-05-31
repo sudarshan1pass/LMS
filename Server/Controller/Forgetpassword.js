@@ -3,7 +3,6 @@ const User = require("../Models/User");
 const crypto = require("crypto")
 const bcrypt = require("bcrypt")
 const { mailSender } = require("../Utils/mailSender")
-const OTP = require("../Models/OTP")
 
 exports.forgetPasswordToken = async (req, res) => {
     try {
@@ -95,21 +94,6 @@ exports.forgetPassword = async (req, res) => {
       });
     }
 
-    // verify otp
-    const otpData = await OTP.findOne({
-      email,
-      otp: otp.toString(),
-    }).sort({ createdAt: -1 });
-
-    console.log("OTP DATA =>", otpData);
-
-    if (!otpData) {
-      return res.status(404).json({
-        success: false,
-        message: "Invalid OTP",
-      });
-    }
-
     // find user
     const user = await User.findOne({ email });
 
@@ -117,6 +101,17 @@ exports.forgetPassword = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "User not found",
+      });
+    }
+
+    if (
+      user.resetOtp !== otp.toString() ||
+      !user.resetOtpExpire ||
+      user.resetOtpExpire < Date.now()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
       });
     }
 
@@ -128,11 +123,10 @@ exports.forgetPassword = async (req, res) => {
 
     // update password
     user.password = hashedPassword;
+    user.resetOtp = undefined;
+    user.resetOtpExpire = undefined;
 
     await user.save();
-
-    // delete used otp
-    await OTP.deleteMany({ email });
 
     return res.status(200).json({
       success: true,
@@ -185,7 +179,7 @@ exports.sendResetOtp = async (req, res) => {
         user.resetOtpExpire = Date.now() + 5 * 60 * 1000;
 
         await user.save();
-        console.log("SAVED USER =>", user);
+        console.log(`Password reset OTP created for ${email}`);
 
         // send mail
         await mailSender(
@@ -206,7 +200,7 @@ exports.sendResetOtp = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Internal server error"
+            message: "Unable to send OTP email"
         })
     }
 }

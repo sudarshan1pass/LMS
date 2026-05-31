@@ -12,6 +12,7 @@ const Forgotpassword = () => {
     const [step, setStep] = useState(1)
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [loading, setLoading] = useState(false);
     // const [userEmail, setUserEmail] = useState("")
 
     const userEmail = useSelector((state) => state.auth.email);
@@ -27,54 +28,60 @@ const Forgotpassword = () => {
     const password = watch("password")
 
     // STEP 1 → send OTP
-   const onSendOtp = async (data) => {
-    try {
-        // Redux me email store karna
-        dispatch(setemail(data.email));
+    const onSendOtp = async (data) => {
+        setLoading(true);
+        try {
+            // Redux me email store karna
+            dispatch(setemail(data.email));
 
-        const response = await axios.post(
-            `${BASE_URL}/auth/send-reset-otp`,
-            {
-                email: data.email
-            }
-        );
+            const response = await axios.post(
+                `${BASE_URL}/auth/send-reset-otp`,
+                {
+                    email: data.email
+                }
+            );
 
-        setStep(2);
-    } catch (error) {
-        console.log(error);
-        alert(error?.response?.data?.message);
-    }
-};
+            setStep(2);
+        } catch (error) {
+            console.log(error);
+            alert(error?.response?.data?.message || "Unable to send OTP");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // STEP 2 → reset password
-const onResetPassword = async (data) => {
+    const onResetPassword = async (data) => {
 
-    try {
+        setLoading(true);
+        try {
 
-        console.log(userEmail);
+            console.log(userEmail);
 
-        const response = await axios.post(
-            `${BASE_URL}/auth/forget-password`,
-            {
-                email: userEmail,
-                otp: data.otp,
-                password: data.password,
-                confirmPassword: data.confirmPassword
-            }
-        );
+            const response = await axios.post(
+                `${BASE_URL}/auth/forget-password`,
+                {
+                    email: userEmail,
+                    otp: data.otp,
+                    password: data.password,
+                    confirmPassword: data.confirmPassword
+                }
+            );
 
-        alert(response.data.message);
+            alert(response.data.message);
 
+        }
+        catch (error) {
+
+            console.log(error);
+
+            alert(
+                error?.response?.data?.message || "Unable to reset password"
+            );
+        } finally {
+            setLoading(false);
+        }
     }
-    catch (error) {
-
-        console.log(error);
-
-        alert(
-            error?.response?.data?.message
-        );
-    }
-}
     const IconEye = () => (
         <svg
             className="h-5 w-5"
@@ -135,9 +142,10 @@ const onResetPassword = async (data) => {
 
                         <button
                             type="submit"
-                            className="mt-6 w-full rounded-xl bg-cyan-500 py-3 font-bold text-white hover:bg-cyan-600"
+                            disabled={loading}
+                            className="mt-6 w-full rounded-xl bg-cyan-500 py-3 font-bold text-white hover:bg-cyan-600 disabled:opacity-50"
                         >
-                            Send OTP
+                            {loading ? "Sending ..." : "Send OTP"}
                         </button>
                     </form>
                 )}
@@ -234,9 +242,10 @@ const onResetPassword = async (data) => {
 
                         <button
                             type="submit"
-                            className="mt-4 w-full cursor-pointer rounded-xl bg-green-500 py-3 font-bold text-white hover:bg-green-600"
+                            disabled={loading}
+                            className="mt-4 w-full cursor-pointer rounded-xl bg-green-500 py-3 font-bold text-white hover:bg-green-600 disabled:opacity-50"
                         >
-                            Save Password
+                            {loading ? "Saving..." : "Save Password"}
                         </button>
                     </form>
                 )}
