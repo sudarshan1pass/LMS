@@ -130,7 +130,11 @@ const Signup = () => {
 
     } catch (error) {
       console.error(error);
-      toast.error("Failed to send OTP");
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Failed to send OTP";
+      toast.error(message);
     }
   };
 

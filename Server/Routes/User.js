@@ -31,9 +31,11 @@ router.post("/signup", SignUp)
 
 // Route for sending OTP to the user's email
 router.post("/sendOTP",sendOTP)
+router.post("/sendotp",sendOTP)
 // Route for Changing the password
 
 router.post("/changePassword",auth,changePassword)
+router.post("/changepassword",auth,changePassword)
 
 
 router.post("/forget-password-token", forgetPasswordToken)
