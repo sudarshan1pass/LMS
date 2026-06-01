@@ -3,7 +3,7 @@ services:
     name: lms-frontend
     runtime: static
     rootDir: frontend
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     staticPublishPath: dist
     autoDeployTrigger: commit
     envVars:
