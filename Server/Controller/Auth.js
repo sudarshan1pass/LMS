@@ -118,7 +118,7 @@ exports.sendOTP=async(req,res)=>{
                 message:"Email is required"
                 })
                 }
-
+               console.log("STEP 1");
                 const userExist = await User.findOne({ email });
                 if (userExist) {
                     return res.status(400).json({
@@ -127,12 +127,17 @@ exports.sendOTP=async(req,res)=>{
                     })
                 }
 
+                console.log("STEP 2");
+
                 // generate otp
                 const result=otpGenerator.generate(6,{
                     upperCaseAlphabets: false,
                      specialChars: false,
                      lowerCaseAlphabets:false
                 })
+                console.log("OTP:", result);
+
+console.log("STEP 3");
                 // save otp in db
              const otpdoc= await new OTP({
                 email,
@@ -140,11 +145,13 @@ exports.sendOTP=async(req,res)=>{
 
                }).save()
 
+               console.log("STEP 4");
              await mailSender(
                 email,
                 "Verification Email",
                 emailTemplate(result)
              )
+             console.log("STEP 5");
 
              return  res.status(201).json({
                 success:true,
