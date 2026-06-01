@@ -73,21 +73,26 @@ require("dotenv").config();
 
 exports.mailSender = async (email, title, body) => {
   try {
+    console.log("MAIL_HOST:", process.env.MAIL_HOST);
+    console.log("MAIL_PORT:", process.env.MAIL_PORT);
+    console.log("MAIL_USER:", process.env.MAIL_USER);
+
     const transporter = nodemailer.createTransport({
       host: process.env.MAIL_HOST,
       port: Number(process.env.MAIL_PORT),
-      secure: process.env.MAIL_SECURE === "true",
-      requireTLS: process.env.MAIL_REQUIRE_TLS === "true",
-
+      secure: false, // 587 ke liye false
       auth: {
         user: process.env.MAIL_USER,
         pass: process.env.MAIL_PASS,
       },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
 
-    // SMTP connection test
+    // SMTP Connection Test
     await transporter.verify();
-    console.log("✅ SMTP Connected Successfully");
+    console.log("✅ SMTP Server Connected");
 
     const info = await transporter.sendMail({
       from: `"StudyNotion" <${process.env.MAIL_USER}>`,
@@ -100,8 +105,8 @@ exports.mailSender = async (email, title, body) => {
 
     return info;
   } catch (error) {
-    console.error("❌ Email Send Error:", error);
+    console.error("❌ Mail Error:", error);
 
-    throw new Error(error.message);
+    throw error;
   }
 };
