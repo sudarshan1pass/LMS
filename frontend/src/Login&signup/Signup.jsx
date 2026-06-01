@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useDispatch } from "react-redux";
-import { setSignupData } from "../Slices/authSlice";
+// import { setSignupData } from "../Slices/authSlice";
+import { setSignupData, setemail } from "../Slices/authSlice";
 import { useNavigate } from "react-router-dom";
 import { apiConnector } from "../services/apiConnector";
 import { endpoints } from "../services/apis";
@@ -97,46 +98,41 @@ const Signup = () => {
   const googleAuthUrl = import.meta.env.VITE_GOOGLE_AUTH_URL || "https://accounts.google.com/";
 
   const onSubmit = async (data) => {
-    try {
-      const payload = {
-        ...data,
-        accountType,
-      };
+  try {
+    const payload = {
+      ...data,
+      accountType,
+    };
 
-      console.log("Signup payload:", payload);
-
-      // ✅ STEP 1: CALL SEND OTP API
-      const response = await apiConnector(
-        "POST",
-        SENDOTP_API,
-        {
-          email: data.email,
-        }
-      );
-
-      console.log("OTP RESPONSE:", response);
-
-      if (!response.data.success) {
-        throw new Error(response.data.message);
+    const response = await apiConnector(
+      "POST",
+      SENDOTP_API,
+      {
+        email: data.email,
       }
+    );
 
-      // ✅ STEP 2: STORE DATA IN REDUX
-      dispatch(setSignupData(payload));
+    console.log("OTP RESPONSE:", response);
 
-      toast.success("OTP sent to your email");
-
-      // ✅ STEP 3: NAVIGATE
-      navigate("/verify-email");
-
-    } catch (error) {
-      console.error(error);
-      const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        "Failed to send OTP";
-      toast.error(message);
+    if (!response.data.success) {
+      throw new Error(response.data.message);
     }
-  };
+
+    dispatch(setSignupData(payload));
+    dispatch(setemail(data.email));
+
+    toast.success("OTP sent successfully");
+
+    navigate("/verify-email");
+  } catch (error) {
+    console.error(error);
+
+    toast.error(
+      error?.response?.data?.message ||
+        "Failed to send OTP"
+    );
+  }
+};
 
   const inputClass =
     "w-full rounded-xl border border-white/15 bg-white/5 py-3 pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30";

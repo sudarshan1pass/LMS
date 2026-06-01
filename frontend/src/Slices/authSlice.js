@@ -1,10 +1,8 @@
 import { createSlice } from "@reduxjs/toolkit";
-// import { forgetPassword } from "../../../Server/Controller/Forgetpassword";
 
 const initialState = {
   signupData: null,
   loading: false,
-  email:null,
 
   token: localStorage.getItem("token")
     ? JSON.parse(localStorage.getItem("token"))
@@ -13,30 +11,39 @@ const initialState = {
   user: localStorage.getItem("user")
     ? JSON.parse(localStorage.getItem("user"))
     : null,
-  email:localStorage.getItem("email") 
+
+  email: localStorage.getItem("email")
     ? JSON.parse(localStorage.getItem("email"))
     : null,
+
+  storedata: localStorage.getItem("storedata")
+    ? JSON.parse(localStorage.getItem("storedata"))
+    : [],
 };
 
 const authSlice = createSlice({
   name: "auth",
-
   initialState,
 
   reducers: {
-    setSignupData(state, action) {
+    setSignupData: (state, action) => {
       state.signupData = action.payload;
     },
 
-    setLoading(state, action) {
+    setLoading: (state, action) => {
       state.loading = action.payload;
     },
 
-    setemail(state,action){
-      state.email=action.payload;
+    setemail: (state, action) => {
+      state.email = action.payload;
+
+      localStorage.setItem(
+        "email",
+        JSON.stringify(action.payload)
+      );
     },
 
-    setToken(state, action) {
+    setToken: (state, action) => {
       state.token = action.payload;
 
       localStorage.setItem(
@@ -45,7 +52,7 @@ const authSlice = createSlice({
       );
     },
 
-    setUser(state, action) {
+    setUser: (state, action) => {
       state.user = action.payload;
 
       localStorage.setItem(
@@ -54,33 +61,40 @@ const authSlice = createSlice({
       );
     },
 
-    logout(state) {
-      state.token = null;
-      state.signupData = null;
-      state.user = null;
-
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-    },
-      updateEmployee: (state, action) => {
+    updateEmployee: (state, action) => {
       const updatedEmp = action.payload;
 
       state.storedata = state.storedata.map((emp) =>
         emp._id === updatedEmp._id ? updatedEmp : emp
       );
 
-      localStorage.setItem("storedata", JSON.stringify(state.storedata));
+      localStorage.setItem(
+        "storedata",
+        JSON.stringify(state.storedata)
+      );
     },
-   
+
+    logout: (state) => {
+      state.token = null;
+      state.user = null;
+      state.signupData = null;
+      state.email = null;
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("email");
+    },
   },
 });
 
 export const {
   setSignupData,
   setLoading,
+  setemail,
   setToken,
-  setUser,setemail,
-  logout,updateEmployee
+  setUser,
+  updateEmployee,
+  logout,
 } = authSlice.actions;
 
 export default authSlice.reducer;
