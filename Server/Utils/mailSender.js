@@ -1,112 +1,73 @@
-// const nodemailer = require("nodemailer")
-// const dns = require("node:dns")
-// require("dotenv").config()
-
-// dns.setDefaultResultOrder("ipv4first")
-
-// exports.mailSender = async (email, title, body) => {
-//     if (process.env.RESEND_API_KEY) {
-//         const response = await fetch("https://api.resend.com/emails", {
-//             method: "POST",
-//             headers: {
-//                 Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-//                 "Content-Type": "application/json",
-//             },
-//             body: JSON.stringify({
-//                 from: process.env.MAIL_FROM || "StudyNotion <onboarding@resend.dev>",
-//                 to: email,
-//                 subject: title,
-//                 html: body,
-//             }),
-//         })
-
-//         const data = await response.json()
-
-//         if (!response.ok) {
-//             throw new Error(data?.message || "Resend email failed")
-//         }
-
-//         console.log(`Email sent to ${email}: ${data.id}`)
-//         return data
-//     }
-
-//     if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
-//         throw new Error("MAIL_USER and MAIL_PASS are required to send email")
-//     }
-
-//     const transporter = nodemailer.createTransport({
-//         host: process.env.MAIL_HOST || "smtp.gmail.com",
-//         port: Number(process.env.MAIL_PORT) || 465,
-//         secure: process.env.MAIL_SECURE ? process.env.MAIL_SECURE === "true" : true,
-//         requireTLS: process.env.MAIL_REQUIRE_TLS ? process.env.MAIL_REQUIRE_TLS === "true" : false,
-//         connectionTimeout: Number(process.env.MAIL_CONNECTION_TIMEOUT) || 10000,
-//         greetingTimeout: Number(process.env.MAIL_GREETING_TIMEOUT) || 10000,
-//         socketTimeout: Number(process.env.MAIL_SOCKET_TIMEOUT) || 15000,
-//         lookup: (hostname, options, callback) => {
-//             dns.lookup(hostname, { ...options, family: 4 }, callback)
-//         },
-//         auth: {
-//             user: process.env.MAIL_USER,
-//             pass: process.env.MAIL_PASS,
-//         },
-//     })
-
-//     try {
-//         const info = await transporter.sendMail({
-//             from: process.env.MAIL_FROM || `"StudyNotion" <${process.env.MAIL_USER}>`,
-//             to: email,
-//             subject: title,
-//             html: body,
-//         })
-
-//         console.log(`Email sent to ${email}: ${info.messageId}`)
-//         return info
-//     }
-//     catch (error) {
-//         console.error("Email send failed:", error.message)
-//         throw error
-//     }
-// }
-
+const dns = require("node:dns");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 
+dns.setDefaultResultOrder("ipv4first");
+
+const getBooleanEnv = (name, defaultValue) => {
+  const value = process.env[name];
+
+  if (value === undefined || value === "") {
+    return defaultValue;
+  }
+
+  return value.toLowerCase() === "true";
+};
+
+const getNumberEnv = (name, defaultValue) => {
+  const value = process.env[name];
+
+  if (value === undefined || value === "") {
+    return defaultValue;
+  }
+
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    throw new Error(`${name} must be a valid number`);
+  }
+
+  return numberValue;
+};
+
 exports.mailSender = async (email, title, body) => {
+  const user = process.env.MAIL_USER;
+  const pass = process.env.MAIL_PASS;
+
+  if (!user || !pass) {
+    throw new Error("MAIL_USER and MAIL_PASS are required to send email");
+  }
+
+  const secure = getBooleanEnv("MAIL_SECURE", false);
+  const transporter = nodemailer.createTransport({
+    host: process.env.MAIL_HOST || "smtp.gmail.com",
+    port: getNumberEnv("MAIL_PORT", secure ? 465 : 587),
+    secure,
+    requireTLS: getBooleanEnv("MAIL_REQUIRE_TLS", false),
+    connectionTimeout: getNumberEnv("MAIL_CONNECTION_TIMEOUT", 10000),
+    greetingTimeout: getNumberEnv("MAIL_GREETING_TIMEOUT", 10000),
+    socketTimeout: getNumberEnv("MAIL_SOCKET_TIMEOUT", 15000),
+    lookup: (hostname, options, callback) => {
+      dns.lookup(hostname, { ...options, family: 4 }, callback);
+    },
+    auth: {
+      user,
+      pass,
+    },
+  });
+
   try {
-    console.log("MAIL_HOST:", process.env.MAIL_HOST);
-    console.log("MAIL_PORT:", process.env.MAIL_PORT);
-    console.log("MAIL_USER:", process.env.MAIL_USER);
-
-    const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: false, // 587 ke liye false
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
-
-    // SMTP Connection Test
-    await transporter.verify();
-    console.log("✅ SMTP Server Connected");
-
     const info = await transporter.sendMail({
-      from: `"StudyNotion" <${process.env.MAIL_USER}>`,
+      from: process.env.MAIL_FROM || `"StudyNotion" <${user}>`,
       to: email,
       subject: title,
       html: body,
     });
 
-    console.log("✅ Email Sent:", info.messageId);
-
+    console.log(`Email sent to ${email}: ${info.messageId}`);
     return info;
   } catch (error) {
-    console.error("❌ Mail Error:", error);
-
+    console.error(`Email send failed for ${email}:`, error.message);
     throw error;
   }
 };

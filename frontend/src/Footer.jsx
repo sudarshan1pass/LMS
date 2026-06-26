@@ -85,30 +85,33 @@ const Footer = () => {
         </h2> */}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {reviews.map((item, index) => (
-            <div
-              key={index}
-              className="bg-[#161D29] border border-[#2C333F] rounded-xl p-6 hover:scale-105 transition-all duration-300 shadow-lg"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-yellow-400 flex items-center justify-center text-black font-bold text-lg">
-                  {item.name.charAt(0)}
-                </div>
-
-                <div>
-                  <h3 className="font-semibold">{item.name}</h3>
-                  <p className="text-sm text-gray-400">{item.role}</p>
-                </div>
-              </div>
-
-              <p className="text-gray-300 text-sm leading-6 mb-4">
-                {item.review}
-              </p>
-
-              <div className="text-yellow-400">★★★★★</div>
-            </div>
-          ))}
+  {reviews.map((item, index) => (
+    <div
+      key={index}
+      className="bg-white rounded-2xl p-6 border border-gray-100
+                 shadow-lg hover:shadow-2xl
+                 hover:-translate-y-2 transition-all duration-300"
+    >
+      <div className="flex items-center gap-3 mb-4">
+        {/* Yellow Profile */}
+        <div className="w-12 h-12 rounded-full bg-yellow-400 flex items-center justify-center text-black font-bold text-lg">
+          {item.name.charAt(0)}
         </div>
+
+        <div>
+          <h3 className="font-semibold text-black">{item.name}</h3>
+          <p className="text-sm text-gray-500">{item.role}</p>
+        </div>
+      </div>
+
+      <p className="text-gray-700 text-sm leading-6 mb-4">
+        {item.review}
+      </p>
+
+      <div className="text-yellow-500 text-lg">★★★★★</div>
+    </div>
+  ))}
+</div>
       </section>
 
       {/* Footer */}

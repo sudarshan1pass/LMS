@@ -7,10 +7,11 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import Dashboard from './Login&signup/Dashboard.jsx'
 import PrivateRoute from './Login&signup/PrivateRoute.jsx'
 import Editprofile from "./Login&signup/Editprofile.jsx"
-import Catalog from './Home/Catalog.jsx'
+// import Catalog from "./Home/Catalog.jsx"
 import About from './Home/About.jsx'
 import Contact from './Home/Contact.jsx'
 import Forgotpassword from './Login&signup/Forgotpassword.jsx'
+import Catalog from "./Home/Catalog.jsx"
 
 function App() {
   const appRouter = createBrowserRouter([

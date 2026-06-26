@@ -108,7 +108,7 @@ const Navbar = () => {
     <>
       <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white shadow-lg">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          
+
           {/* LOGO */}
           <Link
             to="/"
@@ -119,78 +119,48 @@ const Navbar = () => {
 
           {/* DESKTOP MENU */}
           <div className="hidden items-center gap-8 lg:flex">
-            
+
             {navLinks.map((item) =>
               item.label === "Catalog" ? (
-                <div
-                  key={item.label}
-                  className="relative py-3"
-                  onMouseEnter={() =>
-                    setCatalogOpen(true)
-                  }
-                  onMouseLeave={() =>
-                    setCatalogOpen(false)
-                  }
-                >
-                  {/* Catalog Button */}
-                  <Link
-                    to={item.path}
-                    className="flex cursor-pointer items-center gap-2 font-semibold text-black transition-all duration-200 hover:text-cyan-500"
+                <div key={item.label} className="relative">
+                  <button
+                    onClick={() => setCatalogOpen(!catalogOpen)}
+                    className="flex items-center gap-2 font-semibold text-black hover:text-cyan-500 cursor-pointer"
                   >
-                    {item.label}
+                    Catalog
 
-                    {catalogOpen ? (
-                      <svg
-                        className="h-4 w-4 transition-all duration-300"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 14 8"
-                      >
-                        <path
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M13 7 7.674 1.3a.91.91 0 0 0-1.348 0L1 7"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="h-4 w-4 transition-all duration-300"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 14 8"
-                      >
-                        <path
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="m1 1 5.326 5.7a.909.909 0 0 0 1.348 0L13 1"
-                        />
-                      </svg>
-                    )}
-                  </Link>
+                    <svg
+                      className={`h-3 w-3 transition-transform duration-300 ${catalogOpen ? "rotate-180" : ""
+                        }`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 14 8"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m1 1 5.326 5.7a.909.909 0 0 0 1.348 0L13 1"
+                      />
+                    </svg>
+                  </button>
 
-                  {/* DROPDOWN */}
                   {catalogOpen && (
-                    <div className="absolute left-0 top-full z-50 mt-3 w-60 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl">
-                      
-                      {catalogLinks.map(
-                        (catalogItem) => (
-                          <button
-                            key={catalogItem.label}
-                            onClick={() =>
-                              handleSectionNavigation(
-                                catalogItem.section
-                              )
-                            }
-                            className="block w-full cursor-pointer rounded-xl px-4 py-3 text-left font-semibold text-black transition-all duration-200 hover:bg-cyan-50 hover:text-cyan-600"
-                          >
-                            {catalogItem.label}
-                          </button>
-                        )
-                      )}
+                    <div className="absolute cursor-pointer left-0 top-full z-50 mt-3 w-60 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl">
+                      {catalogLinks.map((catalogItem) => (
+                        <button
+                          key={catalogItem.label}
+                          onClick={() => {
+                            handleSectionNavigation(catalogItem.section);
+                              navigate("/Catalog");
+                            setCatalogOpen(false); // option click hone ke baad close
+                          }}
+                          className=" cursor-pointer block w-full rounded-xl px-4 py-3 text-left font-semibold text-black hover:bg-cyan-50 hover:text-cyan-600"
+                        >
+                          {catalogItem.label}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -211,8 +181,7 @@ const Navbar = () => {
                 <button
                   onClick={() =>
                     navigate(
-                      `/dashboard/${
-                        user?._id || user?.id
+                      `/dashboard/${user?._id || user?.id
                       }`
                     )
                   }
@@ -224,7 +193,7 @@ const Navbar = () => {
                 <button
                   onClick={handleLogout}
                   className="cursor-pointer rounded-full bg-red-400 px-10 py-2.5 font-semibold text-black transition-all duration-300 hover:scale-105 hover:bg-red-300 hover:shadow-lg hover:shadow-red-400/40 active:scale-95"
-                
+
                 >
                   Logout
                 </button>
@@ -265,27 +234,67 @@ const Navbar = () => {
         {isOpen && (
           <div className="border-t border-gray-200 bg-white p-5 shadow-xl lg:hidden">
             <div className="flex flex-col gap-4">
-              
-              {navLinks.map((item) => (
+
+            {navLinks.map((item) =>
+              item.label === "Catalog" ? (
+                <div key={item.label} className="relative">
+                  <button
+                    onClick={() => setCatalogOpen(!catalogOpen)}
+                    className="flex items-center gap-2 font-semibold text-black hover:text-cyan-500 cursor-pointer"
+                  >
+                    Catalog
+
+                    <svg
+                      className={`h-3 w-3 transition-transform duration-300 ${catalogOpen ? "rotate-180" : ""
+                        }`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 14 8"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m1 1 5.326 5.7a.909.909 0 0 0 1.348 0L13 1"
+                      />
+                    </svg>
+                  </button>
+
+                  {catalogOpen && (
+                    <div className="absolute cursor-pointer left-0 top-full z-50 mt-3 w-60 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl">
+                      {catalogLinks.map((catalogItem) => (
+                        <button
+                          key={catalogItem.label}
+                          onClick={() => {
+                            handleSectionNavigation(catalogItem.section);
+                            setCatalogOpen(false); // option click hone ke baad close
+                          }}
+                          className=" cursor-pointer block w-full rounded-xl px-4 py-3 text-left font-semibold text-black hover:bg-cyan-50 hover:text-cyan-600"
+                        >
+                          {catalogItem.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
                 <Link
                   key={item.label}
                   to={item.path}
-                  onClick={() =>
-                    setIsOpen(false)
-                  }
-                  className="w-full text-left font-semibold text-black transition-all duration-200 hover:text-cyan-500"
+                  className="cursor-pointer font-semibold text-black transition-all duration-200 hover:text-cyan-500"
                 >
                   {item.label}
                 </Link>
-              ))}
+              )
+            )}
 
               {token ? (
                 <>
                   <button
                     onClick={() =>
                       navigate(
-                        `/dashboard/${
-                          user?._id || user?.id
+                        `/dashboard/${user?._id || user?.id
                         }`
                       )
                     }
@@ -296,8 +305,8 @@ const Navbar = () => {
 
                   <button
                     onClick={handleLogout}
-                     className="cursor-pointer rounded-full bg-red-400 px-8 py-2.5 font-semibold text-black transition-all duration-300 hover:scale-105 hover:bg-red-300 hover:shadow-lg hover:shadow-cyan-400/40 active:scale-95"
-                   
+                    className="cursor-pointer rounded-full bg-red-400 px-8 py-2.5 font-semibold text-black transition-all duration-300 hover:scale-105 hover:bg-red-300 hover:shadow-lg hover:shadow-cyan-400/40 active:scale-95"
+
                   >
                     Logout
                   </button>
@@ -324,7 +333,7 @@ const Navbar = () => {
             </div>
           </div>
         )}
-      </nav>
+      </nav >
 
       <Outlet />
     </>
