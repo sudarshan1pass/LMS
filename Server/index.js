@@ -15,7 +15,7 @@ dotenv.config();
 
 const PORT = process.env.PORT || 4000;
 
-// Database connect
+// Database Connection
 database.connect();
 cloudinaryConnect();
 
@@ -23,7 +23,13 @@ cloudinaryConnect();
 app.use(express.json());
 app.use(cookieParser());
 
-// CORS Configuration
+// Debug middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
+// Allowed Origins
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   "http://localhost:5173",
@@ -31,18 +37,29 @@ const allowedOrigins = [
   "https://lms-d44nlz905-sudarshans-projects-b011b1eb.vercel.app",
 ].filter(Boolean);
 
+// CORS Configuration
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (Postman, mobile apps)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("CORS not allowed"));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// Handle preflight requests
-app.options("*", cors());
+// Handle OPTIONS requests
+app.options(/.*/, cors());
 
+// File Upload Middleware
 app.use(
   fileUpload({
     useTempFiles: true,
@@ -56,13 +73,31 @@ app.use("/api/v1/course", courseRoutes);
 
 // Default Route
 app.get("/", (req, res) => {
-  return res.json({
+  return res.status(200).json({
     success: true,
     message: "Your server is up and running....",
   });
 });
 
-// Server Start
+// Unknown Routes Handler
+app.use("*", (req, res) => {
+  return res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error(err);
+
+  return res.status(500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+  });
+});
+
+// Start Server
 app.listen(PORT, () => {
   console.log(`Server started at PORT ${PORT}`);
 });
