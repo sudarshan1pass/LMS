@@ -41,7 +41,6 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (Postman, mobile apps)
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
@@ -55,9 +54,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
-// Handle OPTIONS requests
-app.options(/.*/, cors());
 
 // File Upload Middleware
 app.use(
@@ -79,8 +75,8 @@ app.get("/", (req, res) => {
   });
 });
 
-// Unknown Routes Handler
-app.use("*", (req, res) => {
+// 404 Route Handler (Express 5 compatible)
+app.use((req, res) => {
   return res.status(404).json({
     success: false,
     message: "Route not found",
