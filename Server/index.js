@@ -1,3 +1,4 @@
+console.log("FRONTEND_URL =", process.env.FRONTEND_URL);
 const express = require("express");
 const app = express();
 
