@@ -1,4 +1,3 @@
-console.log("FRONTEND_URL =", process.env.FRONTEND_URL);
 const express = require("express");
 const app = express();
 
@@ -13,7 +12,7 @@ const dotenv = require("dotenv");
 const fileUpload = require("express-fileupload");
 
 dotenv.config();
-
+console.log("FRONTEND_URL =", process.env.FRONTEND_URL);
 const PORT = process.env.PORT || 4000;
 
 // Database Connection
