@@ -30,28 +30,14 @@ app.use((req, res, next) => {
 });
 
 // Allowed Origins
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  "http://localhost:5173",
-  "https://lms-git-main-sudarshans-projects-b011b1eb.vercel.app",
-  "https://lms-d44nlz905-sudarshans-projects-b011b1eb.vercel.app",
-].filter(Boolean);
+
 
 // CORS Configuration
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(new Error("CORS not allowed"));
-    },
+    origin: process.env.FRONTEND_URL,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
