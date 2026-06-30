@@ -3,8 +3,7 @@ import { useForm } from "react-hook-form"
 import axios from "axios"
 import { useDispatch, useSelector } from "react-redux";
 import { setemail } from "../Slices/authSlice";
-
-const BASE_URL = import.meta.env.VITE_BASE_URL;
+import { BASE_URL } from "../services/apis";
 
 
 

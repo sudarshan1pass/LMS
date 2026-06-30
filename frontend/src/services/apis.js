@@ -1,4 +1,8 @@
-const BASE_URL=import.meta.env.VITE_BASE_URL
+const API_URL = import.meta.env.VITE_API_URL.replace(/\/+$/, "")
+
+export const BASE_URL = API_URL.endsWith("/api/v1")
+  ? API_URL
+  : `${API_URL}/api/v1`
 
 
 // AUTH ENDPOINTS
