@@ -5,19 +5,16 @@ exports.mailSender = async (email, title, body) => {
     const transporter = nodemailer.createTransport({
       host: process.env.MAIL_HOST,
       port: Number(process.env.MAIL_PORT),
-      secure: false, // Port 587 ke liye false
+      secure: false,
 
       auth: {
         user: process.env.MAIL_USER,
         pass: process.env.MAIL_PASS,
       },
-       connectionTimeout: 5000, // 5 sec
-      greetingTimeout: 5000,
-      socketTimeout: 5000,
     });
 
     await transporter.verify();
-    console.log("✅ SMTP Connected Successfully");
+    console.log("✅ SMTP Connected");
 
     const info = await transporter.sendMail({
       from: `"StudyNotion" <${process.env.MAIL_USER}>`,
@@ -26,10 +23,11 @@ exports.mailSender = async (email, title, body) => {
       html: body,
     });
 
-    console.log("✅ Email sent:", info.messageId);
+    console.log("✅ Email Sent:", info.messageId);
     return info;
   } catch (error) {
     console.error("❌ Email send failed:", error);
     throw error;
   }
+};
 };
