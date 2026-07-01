@@ -1,65 +1,34 @@
-const nodemailer = require("nodemailer");
-<<<<<<< HEAD
-=======
-require("dotenv").config();
->>>>>>> 42a4513 (open cors)
+const SibApiV3Sdk = require("sib-api-v3-sdk");
 
 exports.mailSender = async (email, title, body) => {
+  const defaultClient = SibApiV3Sdk.ApiClient.instance;
+
+  // API Key
+  const apiKey = defaultClient.authentications["api-key"];
+  apiKey.apiKey = process.env.MAIL_PASS;
+
+  const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+
+  const sendSmtpEmail = {
+    sender: {
+      email: process.env.MAIL_USER,
+      name: "StudyNotion",
+    },
+
+    to: [{ email }],
+
+    subject: title,
+
+    htmlContent: body,
+  };
+
   try {
-    const transporter = nodemailer.createTransport({
-<<<<<<< HEAD
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: false,
-=======
-      service: "gmail",
->>>>>>> 42a4513 (open cors)
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
 
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
-      },
-<<<<<<< HEAD
-    });
-
-    await transporter.verify();
-    console.log("✅ SMTP Connected");
-
-=======
-
-      tls: {
-        rejectUnauthorized: false,
-      },
-
-      family: 4, // Force IPv4
-    });
-
-    // Verify SMTP connection
-    await transporter.verify();
-    console.log("✅ SMTP Connected Successfully");
-
-    // Send mail
->>>>>>> 42a4513 (open cors)
-    const info = await transporter.sendMail({
-      from: `"StudyNotion" <${process.env.MAIL_USER}>`,
-      to: email,
-      subject: title,
-      html: body,
-    });
-
-<<<<<<< HEAD
-    console.log("✅ Email Sent:", info.messageId);
-=======
-    console.log(`✅ Email sent to ${email}`);
->>>>>>> 42a4513 (open cors)
-    return info;
-
+    console.log("✅ Email sent successfully");
+    return data;
   } catch (error) {
-<<<<<<< HEAD
-    console.error("❌ Email send failed:", error);
-=======
-    console.log("❌ Email send failed:", error);
->>>>>>> 42a4513 (open cors)
+    console.log("❌ Email error:", error);
     throw error;
   }
 };
