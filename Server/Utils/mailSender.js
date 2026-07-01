@@ -11,6 +11,9 @@ exports.mailSender = async (email, title, body) => {
         user: process.env.MAIL_USER,
         pass: process.env.MAIL_PASS,
       },
+       connectionTimeout: 5000, // 5 sec
+      greetingTimeout: 5000,
+      socketTimeout: 5000,
     });
 
     await transporter.verify();
