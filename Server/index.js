@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-
->>>>>>> af5be58 (open cors)
 const express = require("express");
 const app = express();
 
@@ -17,14 +13,10 @@ const fileUpload = require("express-fileupload");
 
 dotenv.config();
 console.log("FRONTEND_URL =", process.env.FRONTEND_URL);
-<<<<<<< HEAD
 console.log("MAIL_HOST =", process.env.MAIL_HOST);
 console.log("MAIL_PORT =", process.env.MAIL_PORT);
 console.log("MAIL_USER =", process.env.MAIL_USER);
 console.log("MAIL_PASS exists =", !!process.env.MAIL_PASS);
-=======
-
->>>>>>> af5be58 (open cors)
 const PORT = process.env.PORT || 4000;
 
 // Database Connection
@@ -41,7 +33,10 @@ app.use((req, res, next) => {
   next();
 });
 
+// Allowed Origins
 
+
+// CORS Configuration
 app.use(
   cors(
     {
