@@ -109,67 +109,66 @@ exports.SignUp = async (req, res) => {
 // otp controllers
 
 exports.sendOTP = async (req, res) => {
-    try {
-        const { email } = req.body
-        // validation
-        if (!email) {
-            return res.status(400).json({
-                success: false,
-                message: "Email is required"
-            })
-        }
-        console.log("STEP 1");
-        const userExist = await User.findOne({ email });
-        if (userExist) {
-            return res.status(400).json({
-                success: false,
-                message: "Email already exists",
-            })
-        }
+  try {
+    const { email } = req.body;
 
-        console.log("STEP 2");
-
-        // generate otp
-        const result = otpGenerator.generate(6, {
-            upperCaseAlphabets: false,
-            specialChars: false,
-            lowerCaseAlphabets: false
-        })
-        console.log("OTP:", result);
-
-        console.log("STEP 3");
-        // save otp in db
-        const otpdoc = await new OTP({
-            email,
-            otp: result
-
-        }).save()
-
-        console.log("STEP 4");
-        await mailSender(
-            email,
-            "Verification Email",
-            emailTemplate(result)
-        )
-        console.log("STEP 5");
-
-        return res.status(201).json({
-            success: true,
-            message: "OTP sent successfully"
-        })
-
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
     }
-    catch (error) {
-        console.error("Signup OTP email failed:", error.message)
-        return res.status(500).json({
-            success: false,
-            message: "Unable to send OTP email",
-            error: error.message
-        })
 
+    const userExist = await User.findOne({ email });
+
+    if (userExist) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists",
+      });
     }
-}
 
+    // Generate OTP
+    const otp = otpGenerator.generate(6, {
+      upperCaseAlphabets: false,
+      specialChars: false,
+      lowerCaseAlphabets: false,
+    });
+
+    // Save OTP in DB
+    await OTP.create({
+      email,
+      otp,
+    });
+
+    // Send response immediately
+    res.status(201).json({
+      success: true,
+      message: "OTP generated successfully",
+    });
+
+    // Send email in background
+    mailSender(
+      email,
+      "Verification Email",
+      emailTemplate(otp)
+    )
+      .then(() => {
+        console.log("✅ OTP email sent");
+      })
+      .catch((err) => {
+        console.log("❌ Email failed:", err.message);
+      });
+
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to generate OTP",
+    });
+  }
+};
 // login 
 
 exports.login = async (req, res) => {
