@@ -30,4 +30,3 @@ exports.mailSender = async (email, title, body) => {
     throw error;
   }
 };
-};
