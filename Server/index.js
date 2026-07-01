@@ -16,7 +16,8 @@ console.log("FRONTEND_URL =", process.env.FRONTEND_URL);
 console.log("MAIL_HOST =", process.env.MAIL_HOST);
 console.log("MAIL_PORT =", process.env.MAIL_PORT);
 console.log("MAIL_USER =", process.env.MAIL_USER);
-console.log("MAIL_PASS exists =", !!process.env.MAIL_PASS);
+console.log("BREVO_API_KEY =", !!process.env.BREVO_API_KEY);
+console.log("MAIL_FROM =", !!process.env.MAIL_FROM);
 const PORT = process.env.PORT || 4000;
 
 // Database Connection
@@ -33,10 +34,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Allowed Origins
 
-
-// CORS Configuration
 app.use(
   cors(
     {
