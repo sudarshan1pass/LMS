@@ -13,6 +13,10 @@ const fileUpload = require("express-fileupload");
 
 dotenv.config();
 console.log("FRONTEND_URL =", process.env.FRONTEND_URL);
+console.log("MAIL_HOST =", process.env.MAIL_HOST);
+console.log("MAIL_PORT =", process.env.MAIL_PORT);
+console.log("MAIL_USER =", process.env.MAIL_USER);
+console.log("MAIL_PASS exists =", !!process.env.MAIL_PASS);
 const PORT = process.env.PORT || 4000;
 
 // Database Connection
