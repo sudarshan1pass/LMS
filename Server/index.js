@@ -14,10 +14,10 @@ const fileUpload = require("express-fileupload");
 dotenv.config();
 console.log("FRONTEND_URL =", process.env.FRONTEND_URL);
 console.log("MAIL_HOST =", process.env.MAIL_HOST);
-console.log("MAIL_PORT =", process.env.MAIL_PORT);
-console.log("MAIL_USER =", process.env.MAIL_USER);
 console.log("BREVO_API_KEY =", !!process.env.BREVO_API_KEY);
 console.log("MAIL_FROM =", !!process.env.MAIL_FROM);
+console.log("MONGO_URL".MONGO_URL);
+
 const PORT = process.env.PORT || 4000;
 
 // Database Connection
