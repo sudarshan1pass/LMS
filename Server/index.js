@@ -19,6 +19,11 @@ console.log("MAIL_FROM =", !!process.env.MAIL_FROM);
 console.log("MONGO_URL".MONGO_URL);
 
 const PORT = process.env.PORT || 4000;
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+].filter(Boolean);
 
 // Database Connection
 database.connect();
@@ -38,7 +43,7 @@ app.use((req, res, next) => {
 app.use(
   cors(
     {
-    origin: process.env.FRONTEND_URL,
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   }
