@@ -119,7 +119,11 @@ exports.sendOTP = async (req, res) => {
       });
     }
 
-    const userExist = await User.findOne({ email });
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const userExist = await User.findOne({
+      email: normalizedEmail,
+    });
 
     if (userExist) {
       return res.status(400).json({
@@ -128,32 +132,51 @@ exports.sendOTP = async (req, res) => {
       });
     }
 
-    // Generate OTP
     const otp = otpGenerator.generate(6, {
       upperCaseAlphabets: false,
       specialChars: false,
       lowerCaseAlphabets: false,
     });
 
-    // Save OTP in DB
-    await OTP.create({
-      email,
+    console.log("Creating OTP for:", normalizedEmail);
+
+    const otpDocument = await OTP.create({
+      email: normalizedEmail,
       otp,
     });
 
-    await mailSender(email, "Verification Email", emailTemplate(otp));
+    console.log("OTP created, sending email...");
+
+    try {
+      await mailSender(
+        normalizedEmail,
+        "Verification Email",
+        emailTemplate(otp)
+      );
+    } catch (mailError) {
+      console.error("MAIL SENDER ERROR:", mailError);
+
+      // Don't keep an OTP that was never delivered.
+      await OTP.findByIdAndDelete(otpDocument._id).catch((deleteError) => {
+        console.error("OTP cleanup error:", deleteError);
+      });
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to send OTP email",
+      });
+    }
 
     return res.status(201).json({
       success: true,
       message: "OTP sent successfully",
     });
-
   } catch (error) {
-    console.error(error);
+    console.error("SEND OTP ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Unable to send OTP email",
+      message: "Unable to process OTP request",
     });
   }
 };
