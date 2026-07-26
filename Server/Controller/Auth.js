@@ -141,31 +141,19 @@ exports.sendOTP = async (req, res) => {
       otp,
     });
 
-    // Send response immediately
-    res.status(201).json({
-      success: true,
-      message: "OTP generated successfully",
-    });
+    await mailSender(email, "Verification Email", emailTemplate(otp));
 
-    // Send email in background
-    mailSender(
-      email,
-      "Verification Email",
-      emailTemplate(otp)
-    )
-      .then(() => {
-        console.log("✅ OTP email sent");
-      })
-      .catch((err) => {
-        console.log("❌ Email failed:", err.message);
-      });
+    return res.status(201).json({
+      success: true,
+      message: "OTP sent successfully",
+    });
 
   } catch (error) {
     console.error(error);
 
     return res.status(500).json({
       success: false,
-      message: "Unable to generate OTP",
+      message: "Unable to send OTP email",
     });
   }
 };
