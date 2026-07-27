@@ -16,14 +16,57 @@ console.log("FRONTEND_URL =", process.env.FRONTEND_URL);
 console.log("MAIL_HOST =", process.env.MAIL_HOST);
 console.log("BREVO_API_KEY =", !!process.env.BREVO_API_KEY);
 console.log("MAIL_FROM =", !!process.env.MAIL_FROM);
-console.log("MONGO_URL".MONGO_URL);
 
 const PORT = process.env.PORT || 4000;
-const allowedOrigins = [
+const parseOrigins = (...values) =>
+  values
+    .flatMap((value) => (value || "").split(","))
+    .map((origin) => origin.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+
+const allowedOrigins = new Set(parseOrigins(
   process.env.FRONTEND_URL,
+  process.env.FRONTEND_URLS,
+  process.env.CLIENT_URL,
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-].filter(Boolean);
+));
+
+const isVercelOrigin = (origin) => {
+  try {
+    const { hostname, protocol } = new URL(origin);
+
+    return protocol === "https:" && hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+};
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    const normalizedOrigin = origin.replace(/\/+$/, "");
+
+    if (
+      allowedOrigins.has(normalizedOrigin) ||
+      isVercelOrigin(normalizedOrigin)
+    ) {
+      return callback(null, true);
+    }
+
+    console.warn("CORS blocked origin:", origin);
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204,
+};
+
+console.log("CORS origins =", [...allowedOrigins]);
 
 // Database Connection
 database.connect();
@@ -40,15 +83,8 @@ app.use((req, res, next) => {
 });
 
 
-app.use(
-  cors(
-    {
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  }
-  )
-);
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
 // File Upload Middleware
 app.use(
