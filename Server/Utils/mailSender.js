@@ -1,6 +1,15 @@
 const nodemailer = require("nodemailer");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
 
+const BREVO_API_PREFIX = "xkeysib-";
+const SMTP_REQUIRED_KEYS = [
+  "MAIL_HOST",
+  "MAIL_PORT",
+  "MAIL_USER",
+  "MAIL_PASS",
+  "MAIL_FROM",
+];
+
 const getEnv = (key) => {
   const value = process.env[key];
 
@@ -17,28 +26,115 @@ const getEnv = (key) => {
   return trimmed.replace(/^["'](.*)["']$/, "$1").trim();
 };
 
-const getBrevoApiKey = () => {
-  const apiKey =
-    getEnv("BREVO_API_KEY") ||
-    getEnv("SENDINBLUE_API_KEY") ||
-    getEnv("SIB_API_KEY");
-
-  if (!apiKey) {
+const cleanSecret = (value, names = []) => {
+  if (!value) {
     return undefined;
   }
 
-  return apiKey
-    .replace(/^(BREVO_API_KEY|SENDINBLUE_API_KEY|SIB_API_KEY)\s*=\s*/i, "")
-    .replace(/\s/g, "");
+  const assignmentPattern = new RegExp(
+    `^(${names.join("|")})\\s*=\\s*`,
+    "i"
+  );
+
+  return value.replace(assignmentPattern, "").replace(/\s/g, "");
+};
+
+const getBrevoApiKey = () =>
+  cleanSecret(
+    getEnv("BREVO_API_KEY") ||
+      getEnv("SENDINBLUE_API_KEY") ||
+      getEnv("SIB_API_KEY"),
+    ["BREVO_API_KEY", "SENDINBLUE_API_KEY", "SIB_API_KEY"]
+  );
+
+const isBrevoApiKeyValid = (apiKey) =>
+  Boolean(apiKey && apiKey.startsWith(BREVO_API_PREFIX));
+
+const isEnabled = (key) => {
+  const value = getEnv(key);
+
+  return ["true", "1", "yes"].includes(value?.toLowerCase());
+};
+
+const redactKnownSecrets = (message) => {
+  let safeMessage = String(message || "");
+  const secrets = [
+    getBrevoApiKey(),
+    cleanSecret(getEnv("MAIL_PASS"), ["MAIL_PASS"]),
+  ].filter(Boolean);
+
+  for (const secret of secrets) {
+    safeMessage = safeMessage.split(secret).join("[redacted]");
+  }
+
+  return safeMessage;
 };
 
 const getBrevoErrorMessage = (error) =>
-  error.response?.body?.message ||
-  error.response?.text ||
-  error.message ||
-  "Unknown Brevo error";
+  redactKnownSecrets(
+    error.response?.body?.message ||
+      error.response?.text ||
+      error.message ||
+      "Unknown Brevo error"
+  );
 
-const isEnabled = (key) => getEnv(key) === "true";
+const getSmtpErrorMessage = (error) =>
+  redactKnownSecrets(error.message || "Unknown SMTP error");
+
+const getSmtpConfig = () => {
+  const config = {
+    host: getEnv("MAIL_HOST"),
+    port: Number(getEnv("MAIL_PORT")),
+    secure: getEnv("MAIL_SECURE") === "true",
+    user: getEnv("MAIL_USER"),
+    pass: cleanSecret(getEnv("MAIL_PASS"), ["MAIL_PASS"]),
+    from: getEnv("MAIL_FROM"),
+    fromName: getEnv("MAIL_FROM_NAME") || "StudyNotion",
+    connectionTimeout:
+      Number(getEnv("SMTP_CONNECTION_TIMEOUT_MS")) || 8000,
+    greetingTimeout:
+      Number(getEnv("SMTP_GREETING_TIMEOUT_MS")) || 8000,
+    socketTimeout: Number(getEnv("SMTP_SOCKET_TIMEOUT_MS")) || 10000,
+  };
+
+  const missingKeys = SMTP_REQUIRED_KEYS.filter((key) => !getEnv(key));
+  const invalidKeys = [];
+
+  if (getEnv("MAIL_PORT") && !Number.isInteger(config.port)) {
+    invalidKeys.push("MAIL_PORT");
+  }
+
+  return {
+    ...config,
+    missingKeys,
+    invalidKeys,
+    ready: missingKeys.length === 0 && invalidKeys.length === 0,
+  };
+};
+
+const getMailConfigDiagnostics = () => {
+  const brevoApiKey = getBrevoApiKey();
+  const smtpConfig = getSmtpConfig();
+
+  return {
+    brevoApiKeyExists: Boolean(brevoApiKey),
+    brevoApiKeyStartsWithXkeysib: isBrevoApiKeyValid(brevoApiKey),
+    brevoApiKeyTrimmedLength: brevoApiKey?.length || 0,
+    smtpFallbackEnabled: isEnabled("SMTP_FALLBACK_ENABLED"),
+    smtp: {
+      mailHostExists: Boolean(getEnv("MAIL_HOST")),
+      mailPortExists: Boolean(getEnv("MAIL_PORT")),
+      mailPortValid: !smtpConfig.invalidKeys.includes("MAIL_PORT"),
+      mailUserExists: Boolean(getEnv("MAIL_USER")),
+      mailPassExists: Boolean(cleanSecret(getEnv("MAIL_PASS"), ["MAIL_PASS"])),
+      mailFromExists: Boolean(getEnv("MAIL_FROM")),
+    },
+  };
+};
+
+const logMailConfigDiagnostics = () => {
+  console.log("MAIL CONFIG DIAGNOSTICS:", getMailConfigDiagnostics());
+};
 
 const sendWithBrevo = async ({
   email,
@@ -69,36 +165,23 @@ const sendWithBrevo = async ({
   });
 };
 
-const sendWithSmtp = async ({
-  email,
-  title,
-  body,
-  senderEmail,
-  senderName,
-}) => {
-  const mailUser = getEnv("MAIL_USER");
-  const mailPass = getEnv("MAIL_PASS")?.replace(/\s/g, "");
-
-  if (!mailUser || !mailPass) {
-    throw new Error("SMTP credentials are missing");
-  }
-
+const sendWithSmtp = async ({ email, title, body, smtpConfig }) => {
   const transporter = nodemailer.createTransport({
-    host: getEnv("MAIL_HOST") || "smtp.gmail.com",
-    port: Number(getEnv("MAIL_PORT")) || 587,
-    secure: getEnv("MAIL_SECURE") === "true",
-    connectionTimeout: Number(getEnv("SMTP_CONNECTION_TIMEOUT_MS")) || 8000,
-    greetingTimeout: Number(getEnv("SMTP_GREETING_TIMEOUT_MS")) || 8000,
-    socketTimeout: Number(getEnv("SMTP_SOCKET_TIMEOUT_MS")) || 10000,
+    host: smtpConfig.host,
+    port: smtpConfig.port,
+    secure: smtpConfig.secure,
+    connectionTimeout: smtpConfig.connectionTimeout,
+    greetingTimeout: smtpConfig.greetingTimeout,
+    socketTimeout: smtpConfig.socketTimeout,
 
     auth: {
-      user: mailUser,
-      pass: mailPass,
+      user: smtpConfig.user,
+      pass: smtpConfig.pass,
     },
   });
 
   return transporter.sendMail({
-    from: `"${senderName}" <${senderEmail}>`,
+    from: `"${smtpConfig.fromName}" <${smtpConfig.from}>`,
     to: email,
     subject: title,
     html: body,
@@ -107,23 +190,17 @@ const sendWithSmtp = async ({
 
 exports.mailSender = async (email, title, body) => {
   const senderName = getEnv("MAIL_FROM_NAME") || "StudyNotion";
-  const senderEmail = getEnv("MAIL_FROM") || getEnv("MAIL_USER");
+  const senderEmail = getEnv("MAIL_FROM");
   const brevoApiKey = getBrevoApiKey();
-  const smtpConfigured = getEnv("MAIL_USER") && getEnv("MAIL_PASS");
   const smtpFallbackEnabled = isEnabled("SMTP_FALLBACK_ENABLED");
+  const smtpConfig = getSmtpConfig();
   const providerErrors = [];
 
-  if (!senderEmail) {
-    throw new Error(
-      "MAIL_FROM or MAIL_USER environment variable is required"
-    );
-  }
+  console.log("MAIL SEND CONFIG:", getMailConfigDiagnostics());
 
-  if (brevoApiKey) {
-    if (!brevoApiKey.startsWith("xkeysib-")) {
-      throw new Error(
-        "BREVO_API_KEY must be a Brevo API v3 key that starts with xkeysib-. Remove the invalid BREVO_API_KEY to use SMTP, or set SMTP_FALLBACK_ENABLED=true."
-      );
+  if (isBrevoApiKeyValid(brevoApiKey)) {
+    if (!senderEmail) {
+      providerErrors.push("MAIL_FROM is required for Brevo sending.");
     } else {
       try {
         const response = await sendWithBrevo({
@@ -143,44 +220,54 @@ exports.mailSender = async (email, title, body) => {
 
         console.error("BREVO ERROR:", brevoError);
         providerErrors.push(`Brevo failed: ${brevoError}.`);
-
-        if (!smtpFallbackEnabled) {
-          throw new Error(
-            `${providerErrors.join(" ")} Set SMTP_FALLBACK_ENABLED=true only if SMTP is available on your hosting plan.`
-          );
-        }
       }
     }
+  } else if (brevoApiKey) {
+    providerErrors.push(
+      "BREVO_API_KEY is set but invalid. It must be a Brevo API v3 key that starts with xkeysib-."
+    );
+  } else {
+    providerErrors.push("BREVO_API_KEY is not configured.");
   }
 
-  if (smtpConfigured) {
-    try {
-      const response = await sendWithSmtp({
-        email,
-        title,
-        body,
-        senderEmail,
-        senderName,
-      });
-
-      console.log("Email sent successfully using SMTP");
-
-      return response;
-    } catch (error) {
-      console.error("SMTP ERROR:", error.message);
-
-      throw new Error(
-        [...providerErrors, `SMTP failed: ${error.message}.`].join(" ")
-      );
-    }
+  if (!smtpFallbackEnabled) {
+    throw new Error(
+      `${providerErrors.join(" ")} SMTP fallback is disabled. Set SMTP_FALLBACK_ENABLED=true only when SMTP is available and configured.`
+    );
   }
 
-  const setupMessage =
-    "Set a valid BREVO_API_KEY in Render, or set SMTP credentials: MAIL_HOST, MAIL_PORT, MAIL_USER, MAIL_PASS, and MAIL_FROM.";
+  if (!smtpConfig.ready) {
+    const issues = [
+      ...smtpConfig.missingKeys.map((key) => `missing ${key}`),
+      ...smtpConfig.invalidKeys.map((key) => `invalid ${key}`),
+    ].join(", ");
 
-  if (providerErrors.length > 0) {
-    throw new Error(`${providerErrors.join(" ")} ${setupMessage}`);
+    throw new Error(
+      `${providerErrors.join(" ")} SMTP_FALLBACK_ENABLED=true, but SMTP configuration is incomplete: ${issues}.`
+    );
   }
 
-  throw new Error(`Email service is not configured. ${setupMessage}`);
+  try {
+    const response = await sendWithSmtp({
+      email,
+      title,
+      body,
+      smtpConfig,
+    });
+
+    console.log("Email sent successfully using SMTP");
+
+    return response;
+  } catch (error) {
+    const smtpError = getSmtpErrorMessage(error);
+
+    console.error("SMTP ERROR:", smtpError);
+
+    throw new Error(
+      `${providerErrors.join(" ")} SMTP failed: ${smtpError}.`
+    );
+  }
 };
+
+exports.getMailConfigDiagnostics = getMailConfigDiagnostics;
+exports.logMailConfigDiagnostics = logMailConfigDiagnostics;
