@@ -128,7 +128,8 @@ const Signup = () => {
     console.error(error);
 
     toast.error(
-      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+        error?.response?.data?.message ||
         "Failed to send OTP"
     );
   }
@@ -354,7 +355,7 @@ const Signup = () => {
               disabled={isSubmitting}
               className="w-full rounded-xl bg-cyan-500 py-3 font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isSubmitting ? "Creating account..." : "Create Account"}
+              {isSubmitting ? "Sending OTP..." : "Create Account"}
             </button>
           </form>
 

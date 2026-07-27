@@ -19,6 +19,7 @@ exports.SignUp = async (req, res) => {
       phone,
       accountType,
       confirmPassword,
+      otp,
     } = req.body;
 
     // 1. Required fields
@@ -29,7 +30,8 @@ exports.SignUp = async (req, res) => {
       !email ||
       !phone ||
       !accountType ||
-      !confirmPassword
+      !confirmPassword ||
+      !otp
     ) {
       return res.status(400).json({
         success: false,
@@ -48,6 +50,17 @@ exports.SignUp = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Email already exists",
+      });
+    }
+
+    const recentOtp = await OTP.findOne({
+      email: normalizedEmail,
+    }).sort({ createdAt: -1 });
+
+    if (!recentOtp || recentOtp.otp !== otp.toString().trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
       });
     }
 
@@ -91,6 +104,8 @@ exports.SignUp = async (req, res) => {
     // Don't return password
     const userResponse = user.toObject();
     delete userResponse.password;
+
+    await OTP.deleteMany({ email: normalizedEmail });
 
     return res.status(201).json({
       success: true,
@@ -147,6 +162,8 @@ exports.sendOTP = async (req, res) => {
     console.log("STEP 1: OTP generated");
 
     // Save OTP
+    await OTP.deleteMany({ email: normalizedEmail });
+
     const otpDocument = await OTP.create({
       email: normalizedEmail,
       otp,
@@ -190,7 +207,7 @@ exports.sendOTP = async (req, res) => {
       // TEMPORARY DEBUG RESPONSE
       return res.status(500).json({
         success: false,
-        message: "Unable to send OTP email",
+        message: mailError.message || "Unable to send OTP email",
 
         error: mailError.message,
 
