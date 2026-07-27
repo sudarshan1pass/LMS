@@ -10,100 +10,139 @@ const emailTemplate = require("../mail/emailVerificationTemplate")
 // signup
 
 exports.SignUp = async (req, res) => {
-    try {
-        // data 
-        const { firstName, lastName, password, email, phone, accountType, confirmPassword, otp } = req.body;
+  try {
+    const {
+      firstName,
+      lastName,
+      password,
+      email,
+      phone,
+      accountType,
+      confirmPassword,
+      otp,
+    } = req.body;
 
-        // validation
-        if (!firstName || !lastName || !password || !email || !phone || !accountType || !confirmPassword || !otp) {
-            return res.status(400).json({
-                success: false,
-                message: "Please fill all the fields",
+    console.log("SIGNUP REQUEST:", {
+      firstName,
+      lastName,
+      email,
+      phone,
+      accountType,
+      otpReceived: Boolean(otp),
+    });
 
-            });
-        }
-        // check if email already exists
-        const userExist = await User.findOne({ email });
-        if (userExist) {
-            return res.status(400).json({
-                success: false,
-                message: "Email already exists",
-            })
-        }
-
-        // match password and confirm password
-        if (password !== confirmPassword) {
-            return res.status(400).json({
-                success: false,
-                message: "Password and confirm password do not match",
-            })
-        }
-
-        // hashed password
-        const hashedpassword = await bcrypt.hash(password, 10);
-
-        // match otp 
-
-        const result = await OTP.find({ email }).sort({ createdAt: -1 }).limit(1);
-        console.log("length=", result.length)
-        if (result.length == 0) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid OTP not found",
-            })
-        }
-        else if (result[0].otp !== otp) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid OTP",
-            })
-        }
-
-
-        // create additional details 
-        const additionalDetails = await new Profile({
-            gender: null,
-            dateOfBirth: null,
-            about: null
-        }).save()
-
-        // create user
-        // let approved = ""
-        // approved === "Instructor" ? (approved = false) : (approved = true)
-        let approved = accountType === "Instructor" ? false : true;
-
-        const user = await new User({
-            firstName,
-            lastName,
-            password: hashedpassword,
-            email,
-            phone,
-            accountType,
-            additionalDetails: additionalDetails._id,
-            image: `https://api.dicebear.com/9.x/initials/svg?seed=${firstName} ${lastName}`
-        }).save();
-
-        // send response
-        return res.status(201).json({
-            success: true,
-            message: "User created successfully",
-            user: user
-
-        })
-        console.log("USER:", user);
-        console.log("BODY:", req.body);
-
+    // 1. Validation
+    if (
+      !firstName ||
+      !lastName ||
+      !password ||
+      !email ||
+      !phone ||
+      !accountType ||
+      !confirmPassword ||
+      !otp
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please fill all the fields",
+      });
     }
-    catch (error) {
 
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error", error,
-            error: error.message
-        })
+    const normalizedEmail = email.trim().toLowerCase();
 
+    // 2. Check existing user
+    const userExist = await User.findOne({
+      email: normalizedEmail,
+    });
+
+    if (userExist) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists",
+      });
     }
-}
+
+    // 3. Password validation
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Password and confirm password do not match",
+      });
+    }
+
+    // 4. Find latest OTP
+    const latestOTP = await OTP.findOne({
+      email: normalizedEmail,
+    }).sort({
+      createdAt: -1,
+    });
+
+    console.log("OTP FOUND:", Boolean(latestOTP));
+
+    if (!latestOTP) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP not found. Please request a new OTP.",
+      });
+    }
+
+    // IMPORTANT: compare both as strings
+    if (String(latestOTP.otp) !== String(otp)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    // 5. Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 6. Create profile
+    const additionalDetails = await Profile.create({
+      gender: null,
+      dateOfBirth: null,
+      about: null,
+    });
+
+    // 7. Instructor approval
+    const approved =
+      accountType === "Instructor" ? false : true;
+
+    // 8. Create user
+    const user = await User.create({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      password: hashedPassword,
+      email: normalizedEmail,
+      phone,
+      accountType,
+      additionalDetails: additionalDetails._id,
+      approved,
+      image: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
+        `${firstName} ${lastName}`
+      )}`,
+    });
+
+    // 9. Delete used OTP
+    await OTP.deleteMany({
+      email: normalizedEmail,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      user,
+    });
+  } catch (error) {
+    console.error("SIGNUP ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
 
 
 // otp controllers
