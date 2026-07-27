@@ -19,19 +19,9 @@ exports.SignUp = async (req, res) => {
       phone,
       accountType,
       confirmPassword,
-      otp,
     } = req.body;
 
-    console.log("SIGNUP REQUEST:", {
-      firstName,
-      lastName,
-      email,
-      phone,
-      accountType,
-      otpReceived: Boolean(otp),
-    });
-
-    // 1. Validation
+    // 1. Required fields
     if (
       !firstName ||
       !lastName ||
@@ -39,8 +29,7 @@ exports.SignUp = async (req, res) => {
       !email ||
       !phone ||
       !accountType ||
-      !confirmPassword ||
-      !otp
+      !confirmPassword
     ) {
       return res.status(400).json({
         success: false,
@@ -62,7 +51,7 @@ exports.SignUp = async (req, res) => {
       });
     }
 
-    // 3. Password validation
+    // 3. Check passwords
     if (password !== confirmPassword) {
       return res.status(400).json({
         success: false,
@@ -70,45 +59,20 @@ exports.SignUp = async (req, res) => {
       });
     }
 
-    // 4. Find latest OTP
-    const latestOTP = await OTP.findOne({
-      email: normalizedEmail,
-    }).sort({
-      createdAt: -1,
-    });
-
-    console.log("OTP FOUND:", Boolean(latestOTP));
-
-    if (!latestOTP) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP not found. Please request a new OTP.",
-      });
-    }
-
-    // IMPORTANT: compare both as strings
-    if (String(latestOTP.otp) !== String(otp)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid OTP",
-      });
-    }
-
-    // 5. Hash password
+    // 4. Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 6. Create profile
+    // 5. Create profile
     const additionalDetails = await Profile.create({
       gender: null,
       dateOfBirth: null,
       about: null,
     });
 
-    // 7. Instructor approval
-    const approved =
-      accountType === "Instructor" ? false : true;
+    // 6. Approval
+    const approved = accountType === "Instructor" ? false : true;
 
-    // 8. Create user
+    // 7. Create user
     const user = await User.create({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -116,23 +80,24 @@ exports.SignUp = async (req, res) => {
       email: normalizedEmail,
       phone,
       accountType,
-      additionalDetails: additionalDetails._id,
       approved,
+      additionalDetails: additionalDetails._id,
+
       image: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
         `${firstName} ${lastName}`
       )}`,
     });
 
-    // 9. Delete used OTP
-    await OTP.deleteMany({
-      email: normalizedEmail,
-    });
+    // Don't return password
+    const userResponse = user.toObject();
+    delete userResponse.password;
 
     return res.status(201).json({
       success: true,
       message: "User created successfully",
-      user,
+      user: userResponse,
     });
+
   } catch (error) {
     console.error("SIGNUP ERROR:", error);
 
