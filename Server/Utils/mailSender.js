@@ -3,49 +3,55 @@ const SibApiV3Sdk = require("sib-api-v3-sdk");
 
 const getEnv = (key) => process.env[key]?.trim();
 
-const getBooleanEnv = (key, defaultValue = false) => {
-  const value = getEnv(key);
+const sendWithBrevo = async ({
+  email,
+  title,
+  body,
+  senderEmail,
+  senderName,
+}) => {
+  const apiClient = SibApiV3Sdk.ApiClient.instance;
 
-  if (!value) {
-    return defaultValue;
-  }
+  apiClient.authentications["api-key"].apiKey =
+    getEnv("BREVO_API_KEY");
 
-  return ["true", "1", "yes"].includes(value.toLowerCase());
+  const apiInstance =
+    new SibApiV3Sdk.TransactionalEmailsApi();
+
+  return apiInstance.sendTransacEmail({
+    sender: {
+      email: senderEmail,
+      name: senderName,
+    },
+    to: [
+      {
+        email: email,
+      },
+    ],
+    subject: title,
+    htmlContent: body,
+  });
 };
 
-const normalizeBrevoApiKey = (value) => {
-  const trimmedValue = value?.trim();
-
-  if (!trimmedValue) {
-    return null;
-  }
-
-  if (trimmedValue.startsWith("xkeysib-")) {
-    return trimmedValue;
-  }
-
-  try {
-    const parsedValue = trimmedValue.startsWith("{")
-      ? JSON.parse(trimmedValue)
-      : JSON.parse(Buffer.from(trimmedValue, "base64").toString("utf8"));
-
-    return parsedValue.api_key?.trim() || trimmedValue;
-  } catch (error) {
-    return trimmedValue;
-  }
-};
-
-const sendWithSmtp = async ({ email, title, body, senderEmail, senderName }) => {
-  const secure = getBooleanEnv("MAIL_SECURE", false);
-  const mailHost = getEnv("MAIL_HOST") || "smtp.gmail.com";
-  const mailPort = Number(getEnv("MAIL_PORT")) || (secure ? 465 : 587);
+const sendWithSmtp = async ({
+  email,
+  title,
+  body,
+  senderEmail,
+  senderName,
+}) => {
   const mailUser = getEnv("MAIL_USER");
   const mailPass = getEnv("MAIL_PASS")?.replace(/\s/g, "");
 
+  if (!mailUser || !mailPass) {
+    throw new Error("SMTP credentials are missing");
+  }
+
   const transporter = nodemailer.createTransport({
-    host: mailHost,
-    port: mailPort,
-    secure,
+    host: getEnv("MAIL_HOST") || "smtp.gmail.com",
+    port: Number(getEnv("MAIL_PORT")) || 587,
+    secure: getEnv("MAIL_SECURE") === "true",
+
     auth: {
       user: mailUser,
       pass: mailPass,
@@ -60,39 +66,28 @@ const sendWithSmtp = async ({ email, title, body, senderEmail, senderName }) => 
   });
 };
 
-const sendWithBrevo = async ({ email, title, body, senderEmail, senderName }) => {
-  const defaultClient = SibApiV3Sdk.ApiClient.instance;
-  const apiKey = defaultClient.authentications["api-key"];
-
-  apiKey.apiKey = normalizeBrevoApiKey(getEnv("BREVO_API_KEY"));
-
-  const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-
-  return apiInstance.sendTransacEmail({
-    sender: {
-      email: senderEmail,
-      name: senderName,
-    },
-    to: [{ email }],
-    subject: title,
-    htmlContent: body,
-  });
-};
-
 exports.mailSender = async (email, title, body) => {
-  const senderName = getEnv("MAIL_FROM_NAME") || "StudyNotion";
-  const mailUser = getEnv("MAIL_USER");
-  const mailPass = getEnv("MAIL_PASS");
+  const senderName =
+    getEnv("MAIL_FROM_NAME") || "StudyNotion";
+
+  const senderEmail =
+    getEnv("MAIL_FROM") || getEnv("MAIL_USER");
+
   const brevoApiKey = getEnv("BREVO_API_KEY");
-  const senderEmail = getEnv("MAIL_FROM") || mailUser;
 
   if (!senderEmail) {
-    throw new Error("MAIL_FROM or MAIL_USER is required to send email");
+    throw new Error(
+      "MAIL_FROM or MAIL_USER environment variable is required"
+    );
   }
 
-  try {
-    if (mailUser && mailPass) {
-      const data = await sendWithSmtp({
+  // ==========================================
+  // 1. BREVO — PRIMARY
+  // ==========================================
+
+  if (brevoApiKey) {
+    try {
+      const response = await sendWithBrevo({
         email,
         title,
         body,
@@ -100,12 +95,26 @@ exports.mailSender = async (email, title, body) => {
         senderName,
       });
 
-      console.log("Email sent successfully with SMTP");
-      return data;
-    }
+      console.log("Email sent successfully using Brevo");
 
-    if (brevoApiKey) {
-      const data = await sendWithBrevo({
+      return response;
+    } catch (error) {
+      console.error(
+        "BREVO ERROR:",
+        error.response?.body || error.message
+      );
+
+      // Continue to SMTP fallback
+    }
+  }
+
+  // ==========================================
+  // 2. SMTP — FALLBACK
+  // ==========================================
+
+  if (getEnv("MAIL_USER") && getEnv("MAIL_PASS")) {
+    try {
+      const response = await sendWithSmtp({
         email,
         title,
         body,
@@ -113,13 +122,22 @@ exports.mailSender = async (email, title, body) => {
         senderName,
       });
 
-      console.log("Email sent successfully with Brevo");
-      return data;
-    }
+      console.log("Email sent successfully using SMTP");
 
-    throw new Error("Configure MAIL_USER and MAIL_PASS, or BREVO_API_KEY");
-  } catch (error) {
-    console.log("Email error:", error.response?.body || error.message);
-    throw error;
+      return response;
+    } catch (error) {
+      console.error(
+        "SMTP ERROR:",
+        error.message
+      );
+
+      throw new Error(
+        `Unable to send email: ${error.message}`
+      );
+    }
   }
+
+  throw new Error(
+    "Email service is not configured. Set BREVO_API_KEY or SMTP credentials."
+  );
 };
