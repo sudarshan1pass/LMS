@@ -125,6 +125,7 @@ exports.sendOTP = async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
 
+    // Check existing user
     const userExist = await User.findOne({
       email: normalizedEmail,
     });
@@ -136,38 +137,67 @@ exports.sendOTP = async (req, res) => {
       });
     }
 
+    // Generate OTP
     const otp = otpGenerator.generate(6, {
       upperCaseAlphabets: false,
       specialChars: false,
       lowerCaseAlphabets: false,
     });
 
-    console.log("Creating OTP for:", normalizedEmail);
+    console.log("STEP 1: OTP generated");
 
+    // Save OTP
     const otpDocument = await OTP.create({
       email: normalizedEmail,
       otp,
     });
 
-    console.log("OTP created, sending email...");
+    console.log("STEP 2: OTP saved in database");
+    console.log("STEP 3: Sending email to:", normalizedEmail);
 
     try {
-      await mailSender(
+      const mailResponse = await mailSender(
         normalizedEmail,
         "Verification Email",
         emailTemplate(otp)
       );
+
+      console.log("STEP 4: Email sent successfully");
+      console.log(
+        "Mail response:",
+        mailResponse?.messageId || "Brevo/API response received"
+      );
+
     } catch (mailError) {
-      console.error("MAIL SENDER ERROR:", mailError);
+      console.error("========== MAIL ERROR ==========");
+      console.error("Message:", mailError.message);
+      console.error("Name:", mailError.name);
+      console.error("Code:", mailError.code);
+      console.error("Response:", mailError.response?.body);
+      console.error("================================");
 
-      // Don't keep an OTP that was never delivered.
-      await OTP.findByIdAndDelete(otpDocument._id).catch((deleteError) => {
-        console.error("OTP cleanup error:", deleteError);
-      });
+      // Delete OTP because email wasn't delivered
+      try {
+        await OTP.findByIdAndDelete(otpDocument._id);
+        console.log("Failed OTP deleted");
+      } catch (cleanupError) {
+        console.error(
+          "OTP CLEANUP ERROR:",
+          cleanupError.message
+        );
+      }
 
+      // TEMPORARY DEBUG RESPONSE
       return res.status(500).json({
         success: false,
         message: "Unable to send OTP email",
+
+        error: mailError.message,
+
+        code: mailError.code || null,
+
+        details:
+          mailError.response?.body || null,
       });
     }
 
@@ -175,12 +205,21 @@ exports.sendOTP = async (req, res) => {
       success: true,
       message: "OTP sent successfully",
     });
+
   } catch (error) {
-    console.error("SEND OTP ERROR:", error);
+    console.error("========== SEND OTP ERROR ==========");
+    console.error("Message:", error.message);
+    console.error("Name:", error.name);
+    console.error("Code:", error.code);
+    console.error("====================================");
 
     return res.status(500).json({
       success: false,
       message: "Unable to process OTP request",
+
+      // TEMPORARY
+      error: error.message,
+      code: error.code || null,
     });
   }
 };

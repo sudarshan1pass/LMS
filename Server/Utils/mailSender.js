@@ -1,7 +1,42 @@
 const nodemailer = require("nodemailer");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
 
-const getEnv = (key) => process.env[key]?.trim();
+const getEnv = (key) => {
+  const value = process.env[key];
+
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  return trimmed.replace(/^["'](.*)["']$/, "$1").trim();
+};
+
+const getBrevoApiKey = () => {
+  const apiKey =
+    getEnv("BREVO_API_KEY") ||
+    getEnv("SENDINBLUE_API_KEY") ||
+    getEnv("SIB_API_KEY");
+
+  if (!apiKey) {
+    return undefined;
+  }
+
+  return apiKey
+    .replace(/^(BREVO_API_KEY|SENDINBLUE_API_KEY|SIB_API_KEY)\s*=\s*/i, "")
+    .replace(/\s/g, "");
+};
+
+const getBrevoErrorMessage = (error) =>
+  error.response?.body?.message ||
+  error.response?.text ||
+  error.message ||
+  "Unknown Brevo error";
 
 const sendWithBrevo = async ({
   email,
@@ -9,14 +44,13 @@ const sendWithBrevo = async ({
   body,
   senderEmail,
   senderName,
+  apiKey,
 }) => {
   const apiClient = SibApiV3Sdk.ApiClient.instance;
 
-  apiClient.authentications["api-key"].apiKey =
-    getEnv("BREVO_API_KEY");
+  apiClient.authentications["api-key"].apiKey = apiKey;
 
-  const apiInstance =
-    new SibApiV3Sdk.TransactionalEmailsApi();
+  const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
   return apiInstance.sendTransacEmail({
     sender: {
@@ -67,13 +101,11 @@ const sendWithSmtp = async ({
 };
 
 exports.mailSender = async (email, title, body) => {
-  const senderName =
-    getEnv("MAIL_FROM_NAME") || "StudyNotion";
-
-  const senderEmail =
-    getEnv("MAIL_FROM") || getEnv("MAIL_USER");
-
-  const brevoApiKey = getEnv("BREVO_API_KEY");
+  const senderName = getEnv("MAIL_FROM_NAME") || "StudyNotion";
+  const senderEmail = getEnv("MAIL_FROM") || getEnv("MAIL_USER");
+  const brevoApiKey = getBrevoApiKey();
+  const smtpConfigured = getEnv("MAIL_USER") && getEnv("MAIL_PASS");
+  const providerErrors = [];
 
   if (!senderEmail) {
     throw new Error(
@@ -81,38 +113,35 @@ exports.mailSender = async (email, title, body) => {
     );
   }
 
-  // ==========================================
-  // 1. BREVO — PRIMARY
-  // ==========================================
-
   if (brevoApiKey) {
-    try {
-      const response = await sendWithBrevo({
-        email,
-        title,
-        body,
-        senderEmail,
-        senderName,
-      });
-
-      console.log("Email sent successfully using Brevo");
-
-      return response;
-    } catch (error) {
-      console.error(
-        "BREVO ERROR:",
-        error.response?.body || error.message
+    if (!brevoApiKey.startsWith("xkeysib-")) {
+      providerErrors.push(
+        "BREVO_API_KEY must be a Brevo API v3 key that starts with xkeysib-."
       );
+    } else {
+      try {
+        const response = await sendWithBrevo({
+          email,
+          title,
+          body,
+          senderEmail,
+          senderName,
+          apiKey: brevoApiKey,
+        });
 
-      // Continue to SMTP fallback
+        console.log("Email sent successfully using Brevo");
+
+        return response;
+      } catch (error) {
+        const brevoError = getBrevoErrorMessage(error);
+
+        console.error("BREVO ERROR:", brevoError);
+        providerErrors.push(`Brevo failed: ${brevoError}.`);
+      }
     }
   }
 
-  // ==========================================
-  // 2. SMTP — FALLBACK
-  // ==========================================
-
-  if (getEnv("MAIL_USER") && getEnv("MAIL_PASS")) {
+  if (smtpConfigured) {
     try {
       const response = await sendWithSmtp({
         email,
@@ -126,18 +155,20 @@ exports.mailSender = async (email, title, body) => {
 
       return response;
     } catch (error) {
-      console.error(
-        "SMTP ERROR:",
-        error.message
-      );
+      console.error("SMTP ERROR:", error.message);
 
       throw new Error(
-        `Unable to send email: ${error.message}`
+        [...providerErrors, `SMTP failed: ${error.message}.`].join(" ")
       );
     }
   }
 
-  throw new Error(
-    "Email service is not configured. Set BREVO_API_KEY or SMTP credentials."
-  );
+  const setupMessage =
+    "Set a valid BREVO_API_KEY in Render, or set SMTP credentials: MAIL_HOST, MAIL_PORT, MAIL_USER, MAIL_PASS, and MAIL_FROM.";
+
+  if (providerErrors.length > 0) {
+    throw new Error(`${providerErrors.join(" ")} ${setupMessage}`);
+  }
+
+  throw new Error(`Email service is not configured. ${setupMessage}`);
 };
