@@ -38,6 +38,8 @@ const getBrevoErrorMessage = (error) =>
   error.message ||
   "Unknown Brevo error";
 
+const isEnabled = (key) => getEnv(key) === "true";
+
 const sendWithBrevo = async ({
   email,
   title,
@@ -85,6 +87,9 @@ const sendWithSmtp = async ({
     host: getEnv("MAIL_HOST") || "smtp.gmail.com",
     port: Number(getEnv("MAIL_PORT")) || 587,
     secure: getEnv("MAIL_SECURE") === "true",
+    connectionTimeout: Number(getEnv("SMTP_CONNECTION_TIMEOUT_MS")) || 8000,
+    greetingTimeout: Number(getEnv("SMTP_GREETING_TIMEOUT_MS")) || 8000,
+    socketTimeout: Number(getEnv("SMTP_SOCKET_TIMEOUT_MS")) || 10000,
 
     auth: {
       user: mailUser,
@@ -105,6 +110,7 @@ exports.mailSender = async (email, title, body) => {
   const senderEmail = getEnv("MAIL_FROM") || getEnv("MAIL_USER");
   const brevoApiKey = getBrevoApiKey();
   const smtpConfigured = getEnv("MAIL_USER") && getEnv("MAIL_PASS");
+  const smtpFallbackEnabled = isEnabled("SMTP_FALLBACK_ENABLED");
   const providerErrors = [];
 
   if (!senderEmail) {
@@ -115,8 +121,8 @@ exports.mailSender = async (email, title, body) => {
 
   if (brevoApiKey) {
     if (!brevoApiKey.startsWith("xkeysib-")) {
-      providerErrors.push(
-        "BREVO_API_KEY must be a Brevo API v3 key that starts with xkeysib-."
+      throw new Error(
+        "BREVO_API_KEY must be a Brevo API v3 key that starts with xkeysib-. Remove the invalid BREVO_API_KEY to use SMTP, or set SMTP_FALLBACK_ENABLED=true."
       );
     } else {
       try {
@@ -137,6 +143,12 @@ exports.mailSender = async (email, title, body) => {
 
         console.error("BREVO ERROR:", brevoError);
         providerErrors.push(`Brevo failed: ${brevoError}.`);
+
+        if (!smtpFallbackEnabled) {
+          throw new Error(
+            `${providerErrors.join(" ")} Set SMTP_FALLBACK_ENABLED=true only if SMTP is available on your hosting plan.`
+          );
+        }
       }
     }
   }

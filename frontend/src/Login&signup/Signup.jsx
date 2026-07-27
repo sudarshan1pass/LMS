@@ -127,6 +127,11 @@ const Signup = () => {
   } catch (error) {
     console.error(error);
 
+    if (error.code === "ECONNABORTED") {
+      toast.error("OTP request timed out. Please try again.");
+      return;
+    }
+
     toast.error(
       error?.response?.data?.error ||
         error?.response?.data?.message ||

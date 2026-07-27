@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const axiosInstance=axios.create({})
+const axiosInstance = axios.create({
+    timeout: 30000,
+    timeoutErrorMessage: "Request timed out. Please try again.",
+})
 
 export const apiConnector=(method,url,bodydata,headers,params)=>{
     return axiosInstance({
