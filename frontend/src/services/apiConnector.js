@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-    timeout: 30000,
+    timeout: 50000,
     timeoutErrorMessage: "Request timed out. Please try again.",
 })
 
